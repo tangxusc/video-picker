@@ -6,10 +6,10 @@ import (
 )
 
 type worker struct {
-	jobBuf chan Job
+	jobBuf chan *Job
 }
 
-func (w *worker) Start(ctx context.Context, works chan<- chan Job) {
+func (w *worker) Start(ctx context.Context, works chan<- chan *Job) {
 	go func() {
 		for {
 			select {
@@ -30,13 +30,16 @@ func (w *worker) Start(ctx context.Context, works chan<- chan Job) {
 	}()
 }
 
-func execJob(ctx context.Context, job Job) {
+func execJob(ctx context.Context, job *Job) {
 	defer func() {
 		if e := recover(); e != nil {
 			logrus.Errorf(`worker exec error:%v`, e)
 		}
 	}()
-	err := job(ctx)
+	subCtx, cancelFunc := context.WithCancel(ctx)
+	job.JobCtx = subCtx
+	job.CancelFunc = cancelFunc
+	err := job.F(subCtx)
 	if err != nil {
 		logrus.Errorf(`worker exec error:%v`, err)
 	}
@@ -45,6 +48,6 @@ func execJob(ctx context.Context, job Job) {
 
 func newWorker() *worker {
 	return &worker{
-		jobBuf: make(chan Job),
+		jobBuf: make(chan *Job),
 	}
 }

@@ -26,20 +26,19 @@ type HuyaDownloader struct {
 	picker     picker.Picker
 }
 
-func (h *HuyaDownloader) Download(target string) (context.Context, context.CancelFunc) {
-	var subCtx context.Context
-	var cancel context.CancelFunc
-	h.dispatcher.Dispatch(func(ctx context.Context) error {
-		subCtx, cancel = context.WithCancel(ctx)
-		return h.downM3u8(subCtx, target, config.Instance.Downloader.TimeOut)
+func (h *HuyaDownloader) Download(target string) *dispatcher.Job {
+	job := dispatcher.NewJob(func(ctx context.Context) error {
+		return h.downM3u8(ctx, target, config.Instance.Downloader.TimeOut)
 	})
-	return subCtx, cancel
+	h.dispatcher.Dispatch(job)
+	return job
 }
 
 func (h *HuyaDownloader) DownloadWithTimeOut(target string, timeout int) {
-	h.dispatcher.Dispatch(func(ctx context.Context) error {
+	job := dispatcher.NewJob(func(ctx context.Context) error {
 		return h.downM3u8(ctx, target, timeout)
 	})
+	h.dispatcher.Dispatch(job)
 }
 
 func NewHuyaDownloader(ctx context.Context, maxWorkers int, picker picker.Picker) *HuyaDownloader {

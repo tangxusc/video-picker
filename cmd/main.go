@@ -34,9 +34,9 @@ func NewCommand(ctx context.Context) *cobra.Command {
 			aiPicker := picker.NewAiPicker(cancel, 1)
 			d := downloader.NewHuyaDownloader(cancel, 1, aiPicker)
 
-			_, cancelFunc := d.Download(`11336726`)
-			time.Sleep(time.Second * 6)
-			cancelFunc()
+			job := d.Download(`11336726`)
+			time.Sleep(time.Minute * 3)
+			job.CancelFunc()
 
 			<-ctx.Done()
 			return nil

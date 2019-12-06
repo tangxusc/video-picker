@@ -29,9 +29,10 @@ func NewAiPicker(ctx context.Context, maxCount int) *AiPicker {
 }
 
 func (a *AiPicker) Pick(target string) {
-	a.dispatcher.Dispatch(func(ctx context.Context) error {
+	job := dispatcher.NewJob(func(ctx context.Context) error {
 		return pick(ctx, target)
 	})
+	a.dispatcher.Dispatch(job)
 }
 
 func pick(ctx context.Context, target string) error {

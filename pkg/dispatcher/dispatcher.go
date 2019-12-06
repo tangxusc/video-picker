@@ -7,17 +7,25 @@ import (
 
 type Dispatcher struct {
 	MaxWorkers int
-	workers    chan chan Job
-	jobs       chan Job
+	workers    chan chan *Job
+	jobs       chan *Job
 }
 
-type Job func(ctx context.Context) error
+type Job struct {
+	F          func(ctx context.Context) error
+	JobCtx     context.Context
+	CancelFunc context.CancelFunc
+}
+
+func NewJob(f func(ctx context.Context) error) *Job {
+	return &Job{F: f}
+}
 
 func NewDispatcher(maxWorkers int) *Dispatcher {
 	d := &Dispatcher{
 		MaxWorkers: maxWorkers,
-		workers:    make(chan chan Job, maxWorkers),
-		jobs:       make(chan Job),
+		workers:    make(chan chan *Job, maxWorkers),
+		jobs:       make(chan *Job),
 	}
 	if maxWorkers < 1 {
 		panic("worker必须至少1个以上")
@@ -26,7 +34,7 @@ func NewDispatcher(maxWorkers int) *Dispatcher {
 	return d
 }
 
-func (d *Dispatcher) Dispatch(target Job) {
+func (d *Dispatcher) Dispatch(target *Job) {
 	//go func() {
 	d.jobs <- target
 	//}()
