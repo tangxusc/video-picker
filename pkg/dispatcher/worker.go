@@ -23,23 +23,24 @@ func (w *worker) Start(ctx context.Context, works chan<- chan Job) {
 					if !ok {
 						return
 					}
-					execJob(job)
+					execJob(ctx, job)
 				}
 			}
 		}
 	}()
 }
 
-func execJob(job Job) {
+func execJob(ctx context.Context, job Job) {
 	defer func() {
 		if e := recover(); e != nil {
 			logrus.Errorf(`worker exec error:%v`, e)
 		}
 	}()
-	err := job()
+	err := job(ctx)
 	if err != nil {
 		logrus.Errorf(`worker exec error:%v`, err)
 	}
+	logrus.Infof(`任务执行完成`)
 }
 
 func newWorker() *worker {

@@ -3,7 +3,6 @@
 
 ## 原理
 docker run -d --rm --name conv -v /home/tangxu/opensource/huya-live-recorder:/hecate/examples/  creactiviti/hecate hecate -i /hecate/examples/test.mp4 -o /hecate/examples/output/ --generate_mov --lmov 60 -w 1080
-docker logs -f conv
 
 
 ## 参照

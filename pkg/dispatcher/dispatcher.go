@@ -5,17 +5,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type dispatcher struct {
+type Dispatcher struct {
 	MaxWorkers int
-	//工作队列
-	workers chan chan Job
-	jobs    chan Job
+	workers    chan chan Job
+	jobs       chan Job
 }
 
-type Job func() error
+type Job func(ctx context.Context) error
 
-func NewDispatcher(maxWorkers int) *dispatcher {
-	d := &dispatcher{
+func NewDispatcher(maxWorkers int) *Dispatcher {
+	d := &Dispatcher{
 		MaxWorkers: maxWorkers,
 		workers:    make(chan chan Job, maxWorkers),
 		jobs:       make(chan Job),
@@ -27,13 +26,13 @@ func NewDispatcher(maxWorkers int) *dispatcher {
 	return d
 }
 
-func (d *dispatcher) Dispatch(target Job) {
-	go func() {
-		d.jobs <- target
-	}()
+func (d *Dispatcher) Dispatch(target Job) {
+	//go func() {
+	d.jobs <- target
+	//}()
 }
 
-func (d *dispatcher) Start(ctx context.Context) {
+func (d *Dispatcher) Start(ctx context.Context) {
 	for i := 0; i < d.MaxWorkers; i++ {
 		newWorker().Start(ctx, d.workers)
 	}

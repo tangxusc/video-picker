@@ -5,6 +5,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/tangxusc/video-picker/pkg/config"
+	"github.com/tangxusc/video-picker/pkg/downloader"
+	"github.com/tangxusc/video-picker/pkg/picker"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -27,6 +29,14 @@ func NewCommand(ctx context.Context) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rand.Seed(time.Now().Unix())
 			config.InitLog()
+
+			cancel, _ := context.WithCancel(ctx)
+			aiPicker := picker.NewAiPicker(cancel, 1)
+			d := downloader.NewHuyaDownloader(cancel, 1, aiPicker)
+
+			_, cancelFunc := d.Download(`11336726`)
+			time.Sleep(time.Second * 6)
+			cancelFunc()
 
 			<-ctx.Done()
 			return nil
