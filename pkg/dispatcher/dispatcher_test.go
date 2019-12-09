@@ -10,13 +10,13 @@ import (
 func TestNewDispatcher(t *testing.T) {
 	dispatcher := NewDispatcher(2)
 	dispatcher.Start(context.TODO())
-	go dispatcher.Dispatch(func(ctx context.Context) error {
+	go dispatcher.Dispatch(NewJob(func(ctx context.Context) error {
 		fmt.Println("test1")
 		return nil
-	})
-	go dispatcher.Dispatch(func(ctx context.Context) error {
+	}))
+	go dispatcher.Dispatch(NewJob(func(ctx context.Context) error {
 		fmt.Println("test2")
 		return fmt.Errorf(`test %v`, `test`)
-	})
+	}))
 	time.Sleep(time.Second * 2)
 }

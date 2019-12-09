@@ -9,6 +9,7 @@ type Dispatcher struct {
 	MaxWorkers int
 	workers    chan chan *Job
 	jobs       chan *Job
+	ctx        context.Context
 }
 
 type Job struct {
@@ -21,11 +22,12 @@ func NewJob(f func(ctx context.Context) error) *Job {
 	return &Job{F: f}
 }
 
-func NewDispatcher(maxWorkers int) *Dispatcher {
+func NewDispatcher(ctx context.Context, maxWorkers int) *Dispatcher {
 	d := &Dispatcher{
 		MaxWorkers: maxWorkers,
 		workers:    make(chan chan *Job, maxWorkers),
 		jobs:       make(chan *Job),
+		ctx:        ctx,
 	}
 	if maxWorkers < 1 {
 		panic("worker必须至少1个以上")
@@ -35,19 +37,23 @@ func NewDispatcher(maxWorkers int) *Dispatcher {
 }
 
 func (d *Dispatcher) Dispatch(target *Job) {
-	//go func() {
-	d.jobs <- target
-	//}()
+	select {
+	case <-d.ctx.Done():
+		close(d.jobs)
+	case d.jobs <- target:
+
+	}
 }
 
-func (d *Dispatcher) Start(ctx context.Context) {
+func (d *Dispatcher) Start() {
 	for i := 0; i < d.MaxWorkers; i++ {
-		newWorker().Start(ctx, d.workers)
+		newWorker(i).Start(d.ctx, d.workers)
 	}
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-d.ctx.Done():
+				close(d.jobs)
 				return
 			case target, ok := <-d.jobs:
 				if !ok {

@@ -7,6 +7,7 @@ import (
 
 type worker struct {
 	jobBuf chan *Job
+	Name   int
 }
 
 func (w *worker) Start(ctx context.Context, works chan<- chan *Job) {
@@ -46,8 +47,9 @@ func execJob(ctx context.Context, job *Job) {
 	logrus.Infof(`任务执行完成`)
 }
 
-func newWorker() *worker {
+func newWorker(i int) *worker {
 	return &worker{
 		jobBuf: make(chan *Job),
+		Name:   i,
 	}
 }

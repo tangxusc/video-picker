@@ -42,12 +42,12 @@ func (h *HuyaDownloader) DownloadWithTimeOut(target string, timeout int) {
 }
 
 func NewHuyaDownloader(ctx context.Context, maxWorkers int, picker picker.Picker) *HuyaDownloader {
-	dis := dispatcher.NewDispatcher(maxWorkers)
+	dis := dispatcher.NewDispatcher(ctx, maxWorkers)
 	downloader := &HuyaDownloader{
 		dispatcher: dis,
 		picker:     picker,
 	}
-	downloader.dispatcher.Start(ctx)
+	downloader.dispatcher.Start()
 	return downloader
 }
 

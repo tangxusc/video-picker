@@ -21,8 +21,8 @@ type AiPicker struct {
 }
 
 func NewAiPicker(ctx context.Context, maxCount int) *AiPicker {
-	dis := dispatcher.NewDispatcher(maxCount)
-	dis.Start(ctx)
+	dis := dispatcher.NewDispatcher(ctx, maxCount)
+	dis.Start()
 	return &AiPicker{
 		dispatcher: dis,
 	}
