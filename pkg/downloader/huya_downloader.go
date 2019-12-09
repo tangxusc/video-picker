@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/video-picker/pkg/config"
 	"github.com/tangxusc/video-picker/pkg/dispatcher"
-	"github.com/tangxusc/video-picker/pkg/picker"
+	"github.com/tangxusc/video-picker/pkg/eventbus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -22,8 +22,9 @@ import (
 const baseUrl = "https://www.huya.com/%s"
 
 type HuyaDownloader struct {
-	dispatcher *dispatcher.Dispatcher
-	picker     picker.Picker
+	dispatcher  *dispatcher.Dispatcher
+	bus         *eventbus.Bus
+	nextChannel string
 }
 
 func (h *HuyaDownloader) Download(target string) *dispatcher.Job {
@@ -41,13 +42,29 @@ func (h *HuyaDownloader) DownloadWithTimeOut(target string, timeout int) {
 	h.dispatcher.Dispatch(job)
 }
 
-func NewHuyaDownloader(ctx context.Context, maxWorkers int, picker picker.Picker) *HuyaDownloader {
+func NewHuyaDownloader(ctx context.Context, maxWorkers int, bus *eventbus.Bus) *HuyaDownloader {
 	dis := dispatcher.NewDispatcher(ctx, maxWorkers)
 	downloader := &HuyaDownloader{
-		dispatcher: dis,
-		picker:     picker,
+		dispatcher:  dis,
+		bus:         bus,
+		nextChannel: "downloaded",
 	}
 	downloader.dispatcher.Start()
+	//c := make(chan interface{})
+	//bus.Subscribe("downloading", c)
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-ctx.Done():
+	//			return
+	//		case event := <-c:
+	//			switch event.(type) {
+	//			case string:
+	//				downloader.Download(event.(string))
+	//			}
+	//		}
+	//	}
+	//}()
 	return downloader
 }
 
@@ -166,6 +183,6 @@ func (h *HuyaDownloader) download(ctx context.Context, target string, dir string
 	e := cmd.Run()
 	logrus.Infof(`%v 下载完成`, target)
 
-	h.picker.Pick(filename)
+	h.bus.Send(h.nextChannel, filename)
 	return e
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/video-picker/pkg/config"
 	"github.com/tangxusc/video-picker/pkg/dispatcher"
+	"github.com/tangxusc/video-picker/pkg/eventbus"
 	"path/filepath"
 )
 
@@ -18,14 +19,32 @@ const ImageName = `creactiviti/hecate`
 
 type AiPicker struct {
 	dispatcher *dispatcher.Dispatcher
+	bus        *eventbus.Bus
 }
 
-func NewAiPicker(ctx context.Context, maxCount int) *AiPicker {
+func NewAiPicker(ctx context.Context, maxCount int, bus *eventbus.Bus) *AiPicker {
 	dis := dispatcher.NewDispatcher(ctx, maxCount)
 	dis.Start()
-	return &AiPicker{
+	picker := &AiPicker{
 		dispatcher: dis,
 	}
+	c := make(chan interface{})
+	bus.Subscribe("downloaded", c)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-c:
+				switch event.(type) {
+				case string:
+					picker.Pick(event.(string))
+				}
+			}
+		}
+	}()
+
+	return picker
 }
 
 func (a *AiPicker) Pick(target string) {

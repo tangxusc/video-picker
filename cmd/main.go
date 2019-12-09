@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tangxusc/video-picker/pkg/config"
 	"github.com/tangxusc/video-picker/pkg/downloader"
+	"github.com/tangxusc/video-picker/pkg/eventbus"
 	"github.com/tangxusc/video-picker/pkg/picker"
 	"math/rand"
 	"os"
@@ -30,9 +31,10 @@ func NewCommand(ctx context.Context) *cobra.Command {
 			rand.Seed(time.Now().Unix())
 			config.InitLog()
 
+			bus := eventbus.NewBus(ctx)
 			cancel, _ := context.WithCancel(ctx)
-			aiPicker := picker.NewAiPicker(cancel, 1)
-			d := downloader.NewHuyaDownloader(cancel, 1, aiPicker)
+			_ = picker.NewAiPicker(cancel, 1, bus)
+			d := downloader.NewHuyaDownloader(cancel, 1, bus)
 
 			job := d.Download(`11336726`)
 			time.Sleep(time.Minute * 3)
