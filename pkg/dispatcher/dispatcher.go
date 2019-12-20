@@ -6,28 +6,18 @@ import (
 )
 
 type Dispatcher struct {
-	MaxWorkers int
-	workers    chan chan *Job
-	jobs       chan *Job
-	ctx        context.Context
-}
-
-type Job struct {
-	F          func(ctx context.Context) error
-	JobCtx     context.Context
-	CancelFunc context.CancelFunc
-}
-
-func NewJob(f func(ctx context.Context) error) *Job {
-	return &Job{F: f}
+	MaxWorkers    int
+	workers       chan chan Pipelines
+	pipelinesChan chan Pipelines
+	ctx           context.Context
 }
 
 func NewDispatcher(ctx context.Context, maxWorkers int) *Dispatcher {
 	d := &Dispatcher{
-		MaxWorkers: maxWorkers,
-		workers:    make(chan chan *Job, maxWorkers),
-		jobs:       make(chan *Job),
-		ctx:        ctx,
+		MaxWorkers:    maxWorkers,
+		workers:       make(chan chan Pipelines, maxWorkers),
+		pipelinesChan: make(chan Pipelines),
+		ctx:           ctx,
 	}
 	if maxWorkers < 1 {
 		panic("worker必须至少1个以上")
@@ -36,11 +26,11 @@ func NewDispatcher(ctx context.Context, maxWorkers int) *Dispatcher {
 	return d
 }
 
-func (d *Dispatcher) Dispatch(target *Job) {
+func (d *Dispatcher) Dispatch(target Pipelines) {
 	select {
 	case <-d.ctx.Done():
-		close(d.jobs)
-	case d.jobs <- target:
+		close(d.pipelinesChan)
+	case d.pipelinesChan <- target:
 
 	}
 }
@@ -53,9 +43,9 @@ func (d *Dispatcher) Start() {
 		for {
 			select {
 			case <-d.ctx.Done():
-				close(d.jobs)
+				close(d.pipelinesChan)
 				return
-			case target, ok := <-d.jobs:
+			case target, ok := <-d.pipelinesChan:
 				if !ok {
 					return
 				}

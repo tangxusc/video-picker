@@ -1,4 +1,4 @@
-package downloader
+package huya
 
 type GameStreamInfo struct {
 	SCdnType      string `json:"sCdnType"`

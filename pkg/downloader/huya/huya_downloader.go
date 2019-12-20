@@ -1,4 +1,4 @@
-package downloader
+package huya
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/video-picker/pkg/config"
-	"github.com/tangxusc/video-picker/pkg/dispatcher"
-	"github.com/tangxusc/video-picker/pkg/eventbus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,56 +17,18 @@ import (
 	"time"
 )
 
-const baseUrl = "https://www.huya.com/%s"
-
 type HuyaDownloader struct {
-	dispatcher  *dispatcher.Dispatcher
-	bus         *eventbus.Bus
-	nextChannel string
+	timeout int
 }
 
-func (h *HuyaDownloader) Download(target string) *dispatcher.Job {
-	job := dispatcher.NewJob(func(ctx context.Context) error {
-		return h.downM3u8(ctx, target, config.Instance.Downloader.TimeOut)
-	})
-	h.dispatcher.Dispatch(job)
-	return job
-}
-
-func (h *HuyaDownloader) DownloadWithTimeOut(target string, timeout int) {
-	job := dispatcher.NewJob(func(ctx context.Context) error {
-		return h.downM3u8(ctx, target, timeout)
-	})
-	h.dispatcher.Dispatch(job)
-}
-
-func NewHuyaDownloader(ctx context.Context, maxWorkers int, bus *eventbus.Bus) *HuyaDownloader {
-	dis := dispatcher.NewDispatcher(ctx, maxWorkers)
-	downloader := &HuyaDownloader{
-		dispatcher:  dis,
-		bus:         bus,
-		nextChannel: "downloaded",
+func NewHuyaDownloader() *HuyaDownloader {
+	return &HuyaDownloader{
+		timeout: config.Instance.Downloader.TimeOut,
 	}
-	downloader.dispatcher.Start()
-	//c := make(chan interface{})
-	//bus.Subscribe("downloading", c)
-	//go func() {
-	//	for {
-	//		select {
-	//		case <-ctx.Done():
-	//			return
-	//		case event := <-c:
-	//			switch event.(type) {
-	//			case string:
-	//				downloader.Download(event.(string))
-	//			}
-	//		}
-	//	}
-	//}()
-	return downloader
 }
 
-func (h *HuyaDownloader) downM3u8(ctx context.Context, target string, timeout int) error {
+func (h *HuyaDownloader) Download(ctx context.Context, values map[string]interface{}) error {
+	target := values[`target`].(string)
 	hyPlayerConfig, e := h.getHyPlayerConfig(target, ctx)
 	if e != nil {
 		return e
@@ -98,7 +58,7 @@ func (h *HuyaDownloader) downM3u8(ctx context.Context, target string, timeout in
 		case <-ctx.Done():
 			return nil
 		default:
-			e := h.download(ctx, m3u8, dir, timeout)
+			e := h.download(ctx, m3u8, dir, values)
 			if e != nil {
 				return e
 			}
@@ -107,6 +67,7 @@ func (h *HuyaDownloader) downM3u8(ctx context.Context, target string, timeout in
 }
 
 func (h *HuyaDownloader) getHyPlayerConfig(target string, ctx context.Context) (*HyPlayerConfig, error) {
+	const baseUrl = "https://www.huya.com/%s"
 	url := fmt.Sprintf(baseUrl, target)
 
 	client := &http.Client{
@@ -150,10 +111,10 @@ func (h *HuyaDownloader) getHyPlayerConfig(target string, ctx context.Context) (
 	return &hyPlayerConfig, nil
 }
 
-func (h *HuyaDownloader) download(ctx context.Context, target string, dir string, timeout int) error {
+func (h *HuyaDownloader) download(ctx context.Context, target string, dir string, values map[string]interface{}) error {
 	reader, writer := io.Pipe()
 	go func() {
-		ticker := time.NewTicker(time.Duration(timeout) * time.Minute)
+		ticker := time.NewTicker(time.Duration(h.timeout) * time.Minute)
 		defer ticker.Stop()
 		defer writer.Close()
 		send := false
@@ -183,6 +144,6 @@ func (h *HuyaDownloader) download(ctx context.Context, target string, dir string
 	e := cmd.Run()
 	logrus.Infof(`%v 下载完成`, target)
 
-	h.bus.Send(h.nextChannel, filename)
+	values[`filepath`] = filename
 	return e
 }

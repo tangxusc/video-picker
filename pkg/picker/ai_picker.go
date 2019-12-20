@@ -9,8 +9,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/video-picker/pkg/config"
-	"github.com/tangxusc/video-picker/pkg/dispatcher"
-	"github.com/tangxusc/video-picker/pkg/eventbus"
 	"path/filepath"
 )
 
@@ -18,52 +16,22 @@ const ContainerInputFilePath = "/hecate/examples/"
 const ImageName = `creactiviti/hecate`
 
 type AiPicker struct {
-	dispatcher *dispatcher.Dispatcher
-	bus        *eventbus.Bus
 }
 
-func NewAiPicker(ctx context.Context, maxCount int, bus *eventbus.Bus) *AiPicker {
-	dis := dispatcher.NewDispatcher(ctx, maxCount)
-	dis.Start()
-	picker := &AiPicker{
-		dispatcher: dis,
-	}
-	c := make(chan interface{})
-	bus.Subscribe("downloaded", c)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case event := <-c:
-				switch event.(type) {
-				case string:
-					picker.Pick(event.(string))
-				}
-			}
-		}
-	}()
-
-	return picker
+func NewAiPicker() *AiPicker {
+	return &AiPicker{}
 }
 
-func (a *AiPicker) Pick(target string) {
-	job := dispatcher.NewJob(func(ctx context.Context) error {
-		return pick(ctx, target)
-	})
-	a.dispatcher.Dispatch(job)
-}
-
-func pick(ctx context.Context, target string) error {
-	fmt.Println("=========开始智能剪辑文件:", target, "==========")
+func (p *AiPicker) Pick(ctx context.Context, values map[string]interface{}) error {
+	file := values[`filepath`].(string)
+	fmt.Println("=========开始智能剪辑文件:", file, "==========")
 	cli, e := client.NewEnvClient()
 	if e != nil {
 		return e
 	}
-
-	target, _ = filepath.Abs(target)
-	filename := filepath.Base(target)
-	targetDir := filepath.Dir(target)
+	file, _ = filepath.Abs(file)
+	filename := filepath.Base(file)
+	targetDir := filepath.Dir(file)
 	containerFilePath := ContainerInputFilePath
 
 	logrus.Debugf("filename:%v,targetDir:%v,containerFilePath:%v", filename, targetDir, containerFilePath)
@@ -95,6 +63,6 @@ func pick(ctx context.Context, target string) error {
 		return e
 	}
 	logrus.Infof(`容器运行结果:%v`, status)
-	fmt.Println("=========智能剪辑文件:", target, "结束==========")
+	fmt.Println("=========智能剪辑文件:", file, "结束==========")
 	return nil
 }

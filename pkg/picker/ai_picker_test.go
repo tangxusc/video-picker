@@ -12,8 +12,10 @@ import (
 )
 
 func TestNewAiPicker(t *testing.T) {
-	picker := NewAiPicker(context.TODO(), 1, nil)
-	picker.Pick(`../../video/武林萌主唐小姐/2019-12-06-13-40.mp4`)
+	picker := NewAiPicker()
+	m := make(map[string]interface{})
+	m[`filepath`] = `../../video/武林萌主唐小姐/2019-12-06-13-40.mp4`
+	picker.Pick(context.TODO(), m)
 	select {}
 }
 

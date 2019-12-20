@@ -6,41 +6,38 @@ import (
 )
 
 type worker struct {
-	jobBuf chan *Job
-	Name   int
+	pipelines chan Pipelines
+	Name      int
 }
 
-func (w *worker) Start(ctx context.Context, works chan<- chan *Job) {
+func (w *worker) Start(ctx context.Context, works chan<- chan Pipelines) {
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				close(w.jobBuf)
+				close(w.pipelines)
 				return
 			default:
-				works <- w.jobBuf
+				works <- w.pipelines
 				select {
-				case job, ok := <-w.jobBuf:
+				case pipelines, ok := <-w.pipelines:
 					if !ok {
 						return
 					}
-					execJob(ctx, job)
+					execPipelines(ctx, pipelines)
 				}
 			}
 		}
 	}()
 }
 
-func execJob(ctx context.Context, job *Job) {
+func execPipelines(ctx context.Context, pipelines Pipelines) {
 	defer func() {
 		if e := recover(); e != nil {
 			logrus.Errorf(`worker exec error:%v`, e)
 		}
 	}()
-	subCtx, cancelFunc := context.WithCancel(ctx)
-	job.JobCtx = subCtx
-	job.CancelFunc = cancelFunc
-	err := job.F(subCtx)
+	err := pipelines.Run(ctx)
 	if err != nil {
 		logrus.Errorf(`worker exec error:%v`, err)
 	}
@@ -49,7 +46,7 @@ func execJob(ctx context.Context, job *Job) {
 
 func newWorker(i int) *worker {
 	return &worker{
-		jobBuf: make(chan *Job),
-		Name:   i,
+		pipelines: make(chan Pipelines),
+		Name:      i,
 	}
 }

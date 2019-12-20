@@ -8,15 +8,13 @@ import (
 )
 
 func TestNewDispatcher(t *testing.T) {
-	dispatcher := NewDispatcher(2)
-	dispatcher.Start(context.TODO())
-	go dispatcher.Dispatch(NewJob(func(ctx context.Context) error {
-		fmt.Println("test1")
+	dispatcher := NewDispatcher(context.TODO(), 2)
+	dispatcher.Start()
+	pipelines := NewPipelines(context.TODO())
+	pipelines.AddPipeline(func(ctx context.Context, values map[string]interface{}) error {
+		fmt.Println(`test`)
 		return nil
-	}))
-	go dispatcher.Dispatch(NewJob(func(ctx context.Context) error {
-		fmt.Println("test2")
-		return fmt.Errorf(`test %v`, `test`)
-	}))
+	})
+	dispatcher.Dispatch(pipelines)
 	time.Sleep(time.Second * 2)
 }
